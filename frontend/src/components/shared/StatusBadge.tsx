@@ -5,6 +5,7 @@ const statusConfig = {
   "in-progress": { label: "In Progress", className: "status-progress" },
   resolved: { label: "Resolved", className: "status-resolved" },
   emergency: { label: "Emergency", className: "status-emergency" },
+  rejected: { label: "Rejected", className: "status-submitted" },
 };
 
 const severityConfig = {

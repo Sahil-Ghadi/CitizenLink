@@ -8,6 +8,7 @@ load_dotenv()
 # Import routers (Firebase is initialized inside firebase_admin_init)
 from routers import auth as auth_router
 from routers import tickets as tickets_router
+from routers import agents as agents_router
 
 app = FastAPI(
     title="CitizenLink API",
@@ -28,6 +29,7 @@ app.add_middleware(
 # Routers
 app.include_router(auth_router.router)
 app.include_router(tickets_router.router)
+app.include_router(agents_router.router)
 
 
 @app.get("/health")

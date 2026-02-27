@@ -2,11 +2,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
-import { tickets, ticketMessages, citizenUser } from "@/data/mockData";
 import { StatusBadge, SeverityBadge, AiBadge } from "@/components/shared/StatusBadge";
-import { ArrowLeft, Send, Star, Clock, AlertTriangle, RefreshCw, ChevronUp, MapPin, Check } from "lucide-react";
+import { ArrowLeft, Send, Star, Clock, AlertTriangle, RefreshCw, ChevronUp, MapPin, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useTicketById } from "@/hooks/use-tickets";
 
 const statusSteps = [
   { label: "Submitted", icon: "📋" },
@@ -15,25 +15,45 @@ const statusSteps = [
   { label: "Resolved", icon: "✅" },
 ];
 
+function statusToIndex(status: string): number {
+  if (status === "resolved") return 3;
+  if (status === "in-progress") return 2;
+  if (status === "submitted") return 0;
+  return 0;
+}
+
 const TicketDetail = () => {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
-  const ticket = tickets.find((t) => t.id === id);
-  const messages = ticketMessages[id || ""] || [];
+  const { ticket, loading, error } = useTicketById(id);
   const [newMessage, setNewMessage] = useState("");
-  const [rating, setRating] = useState(ticket?.rating || 0);
+  const [rating, setRating] = useState(0);
 
-  if (!ticket) {
+  // Loading
+  if (loading) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Ticket not found</p>
-        <Button variant="outline" onClick={() => router.push("/tickets")} className="mt-4 rounded-xl">Back to Tickets</Button>
+      <div className="max-w-3xl mx-auto space-y-4 animate-pulse">
+        <div className="h-5 bg-secondary rounded w-24" />
+        <div className="glass-card p-5 h-40" />
+        <div className="glass-card p-4 h-20" />
       </div>
     );
   }
 
-  const statusIndex = ticket.status === "submitted" ? 0 : ticket.status === "in-progress" ? 2 : ticket.status === "resolved" ? 3 : 0;
+  // Error / not found
+  if (error || !ticket) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">{error ?? "Ticket not found"}</p>
+        <Button variant="outline" onClick={() => router.push("/tickets")} className="mt-4 rounded-xl">
+          Back to Tickets
+        </Button>
+      </div>
+    );
+  }
+
+  const statusIndex = statusToIndex(ticket.status);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -51,8 +71,16 @@ const TicketDetail = () => {
               <SeverityBadge severity={ticket.severity} />
             </div>
             <h1 className="text-lg font-display font-bold text-foreground">{ticket.title}</h1>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><MapPin className="w-3 h-3" />{ticket.location}</p>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />{ticket.location_address}
+            </p>
           </div>
+          {ticket.agent_name && (
+            <div className="text-right text-xs text-muted-foreground shrink-0">
+              <p className="font-medium text-foreground">{ticket.agent_name}</p>
+              <p>Assigned agent</p>
+            </div>
+          )}
         </div>
 
         {/* Status Timeline */}
@@ -60,8 +88,7 @@ const TicketDetail = () => {
           {statusSteps.map((s, i) => (
             <div key={s.label} className="flex items-center flex-1">
               <div className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all ${i <= statusIndex ? "bg-accent/15 border-2 border-accent" : "bg-secondary border-2 border-border"
-                  }`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all ${i <= statusIndex ? "bg-accent/15 border-2 border-accent" : "bg-secondary border-2 border-border"}`}>
                   {i <= statusIndex ? s.icon : <span className="text-muted-foreground text-sm">{i + 1}</span>}
                 </div>
                 <span className={`text-[10px] mt-1 ${i <= statusIndex ? "text-foreground font-medium" : "text-muted-foreground"}`}>{s.label}</span>
@@ -78,8 +105,16 @@ const TicketDetail = () => {
       <div className="glass-card p-4 flex items-center gap-3">
         <Clock className="w-5 h-5 text-accent" />
         <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">Typically resolved in {ticket.estimatedDays} days</p>
-          <p className="text-xs text-muted-foreground">Based on {ticket.similarCases} similar cases</p>
+          <p className="text-sm font-medium text-foreground">
+            {ticket.status === "resolved"
+              ? "Issue resolved ✓"
+              : `Priority Score: ${ticket.priority_score}`}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {ticket.status === "resolved"
+              ? `Resolved on ${new Date(ticket.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+              : `Department: ${ticket.department}`}
+          </p>
         </div>
         <AiBadge />
       </div>
@@ -90,30 +125,45 @@ const TicketDetail = () => {
         <p className="text-sm text-muted-foreground leading-relaxed">{ticket.description}</p>
       </div>
 
-      {/* Messages */}
-      {messages.length > 0 && (
+      {/* AI Summary */}
+      {ticket.ai_summary && (
+        <div className="glass-card p-4 border-l-4 border-l-accent">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-sm font-semibold text-foreground">AI Summary</h3>
+            <AiBadge />
+          </div>
+          <p className="text-sm text-muted-foreground">{ticket.ai_summary}</p>
+        </div>
+      )}
+
+      {/* Photos */}
+      {ticket.photo_urls && ticket.photo_urls.length > 0 && (
         <div className="glass-card p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Messages</h3>
-          <div className="space-y-3 mb-4">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.sender === "citizen" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[75%] p-3 rounded-2xl text-sm ${msg.sender === "citizen"
-                  ? "bg-primary text-primary-foreground rounded-tr-md"
-                  : "bg-secondary text-foreground rounded-tl-md"
-                  }`}>
-                  <p className="font-medium text-xs mb-1 opacity-75">{msg.senderName}</p>
-                  <p>{msg.text}</p>
-                  <p className="text-[10px] opacity-50 mt-1">{new Date(msg.timestamp).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
-                </div>
-              </div>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Photos</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {ticket.photo_urls.map((url, i) => (
+              <img key={i} src={url} alt={`Photo ${i + 1}`} className="w-full h-28 object-cover rounded-xl border border-border" />
             ))}
           </div>
-          <div className="flex gap-2">
-            <Textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="rounded-xl min-h-[40px] text-sm" />
-            <Button size="icon" className="rounded-xl bg-primary text-primary-foreground shrink-0 h-10 w-10">
-              <Send className="w-4 h-4" />
-            </Button>
+        </div>
+      )}
+
+      {/* Resolution details (if resolved) */}
+      {ticket.status === "resolved" && (ticket as any).resolution_note && (
+        <div className="glass-card p-4 border-l-4 border-l-status-resolved">
+          <div className="flex items-center gap-2 mb-2">
+            <Check className="w-4 h-4 text-status-resolved" />
+            <h3 className="text-sm font-semibold text-foreground">Resolution Summary</h3>
           </div>
+          <p className="text-sm text-muted-foreground">{(ticket as any).resolution_note}</p>
+          {(ticket as any).resolution_type && (
+            <span className="mt-2 inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-status-resolved/15 text-status-resolved">
+              {(ticket as any).resolution_type}
+            </span>
+          )}
+          {(ticket as any).proof_url && (
+            <img src={(ticket as any).proof_url} alt="Resolution proof" className="mt-3 w-full h-32 object-cover rounded-xl border border-border" />
+          )}
         </div>
       )}
 
@@ -131,7 +181,7 @@ const TicketDetail = () => {
         )}
       </div>
 
-      {/* Rating */}
+      {/* Rating (shown only after resolution) */}
       {ticket.status === "resolved" && (
         <div className="glass-card p-4">
           <h3 className="text-sm font-semibold text-foreground mb-3">Rate Resolution</h3>
@@ -142,7 +192,10 @@ const TicketDetail = () => {
               </button>
             ))}
           </div>
-          <Textarea placeholder="Leave a comment about the resolution..." className="rounded-xl text-sm" />
+          <Textarea placeholder="Leave a comment about the resolution…" className="rounded-xl text-sm" />
+          {rating > 0 && (
+            <Button className="mt-3 rounded-xl bg-primary text-primary-foreground" size="sm">Submit Rating</Button>
+          )}
         </div>
       )}
     </div>

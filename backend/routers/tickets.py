@@ -280,3 +280,98 @@ async def get_my_tickets(authorization: str = Header(...)):
     result = [doc.to_dict() for doc in docs]
     result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return result
+
+
+@router.get("/search/similar")
+async def search_similar_tickets(
+    issue_type: str,
+    department: str,
+    authorization: str = Header(...),
+):
+    """Return up to 5 resolved tickets matching the given department, used by the agent copilot tool."""
+    verify_token(authorization)
+    docs = (
+        db.collection("tickets")
+        .where("department", "==", department)
+        .where("status", "==", "resolved")
+        .stream()
+    )
+    tickets_list = [doc.to_dict() for doc in docs]
+    # Secondary filter on issue_type (category) in Python to avoid composite index
+    filtered = [
+        t for t in tickets_list
+        if t.get("category", "").lower() == issue_type.lower()
+    ][:5]
+    return {"tickets": filtered}
+
+
+@router.get("/all")
+async def get_all_tickets(authorization: str = Header(...)):
+    """Get all tickets from Firestore — for the agent queue/dashboard. Sorted by priority_score desc."""
+    verify_token(authorization)
+    docs = db.collection("tickets").stream()
+    result = [doc.to_dict() for doc in docs]
+    result.sort(key=lambda x: x.get("priority_score", 0), reverse=True)
+    return result
+
+
+
+@router.patch("/{ticket_id}/resolve")
+async def resolve_ticket(ticket_id: str, authorization: str = Header(...), body: dict = None):
+    """
+    Mark a ticket as resolved. Called by the agent after completing the resolution flow.
+    Updates Firestore and adjusts citizen stats.
+    """
+    decoded = verify_token(authorization)
+    agent_uid = decoded["uid"]
+
+    # Fetch the ticket to verify it exists and get citizen_uid
+    doc_ref = db.collection("tickets").document(ticket_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    ticket_data = doc.to_dict()
+    citizen_uid = ticket_data.get("citizen_uid")
+
+    # Fetch agent display name
+    agent_doc = db.collection("users").document(agent_uid).get()
+    agent_name = agent_doc.to_dict().get("display_name", "Agent") if agent_doc.exists else "Agent"
+
+    now = datetime.now(timezone.utc).isoformat()
+    payload = body or {}
+
+    update_data = {
+        "status": "resolved",
+        "updated_at": now,
+        "resolved_at": now,
+        "agent_uid": agent_uid,
+        "agent_name": agent_name,
+        "resolution_note": payload.get("resolution_note", ""),
+        "proof_url": payload.get("proof_url", ""),
+        "resolution_type": payload.get("resolution_type", ""),
+    }
+    doc_ref.update(update_data)
+
+    # Update citizen stats: active -1, resolved +1
+    if citizen_uid:
+        citizen_ref = db.collection("users").document(citizen_uid)
+        citizen_doc = citizen_ref.get()
+        if citizen_doc.exists:
+            cd = citizen_doc.to_dict()
+            citizen_ref.update({
+                "active": max(0, cd.get("active", 1) - 1),
+                "resolved": cd.get("resolved", 0) + 1,
+            })
+
+    return {"success": True, "ticket_id": ticket_id, "status": "resolved"}
+
+
+@router.get("/{ticket_id}")
+async def get_ticket_by_id(ticket_id: str, authorization: str = Header(...)):
+    """Fetch a single ticket by its ID. Used internally by agent tools."""
+    verify_token(authorization)
+    doc = db.collection("tickets").document(ticket_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return doc.to_dict()
