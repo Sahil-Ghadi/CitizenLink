@@ -201,12 +201,10 @@ export const notifications: Notification[] = [
   { id: "n4", title: "Weekly Summary", message: "4 issues resolved in your area this week", time: "1 day ago", read: true, type: "info" },
 ];
 
-export const departments = [
-  "Water & Sewage", "Electrical", "Sanitation", "Roads & Transport", 
-  "Parks", "Environment", "Building & Planning", "Public Health"
-];
+export { DEPARTMENTS as departments } from "@/lib/constants";
 
 export const categories = [
-  "Water Supply", "Street Lighting", "Sanitation", "Roads", 
-  "Parks & Gardens", "Noise Pollution", "Building Violations", "Public Health"
+  "Water Supply", "Street Lighting", "Sanitation", "Roads",
+  "Parks & Gardens", "Noise Pollution", "Building Violations", "Public Health",
+  "Drainage & Flooding", "Traffic & Signals", "Electricity", "Public Safety", "Other"
 ];

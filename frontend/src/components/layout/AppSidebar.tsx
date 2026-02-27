@@ -1,6 +1,6 @@
 import {
-  LayoutDashboard, FileText, PlusCircle, ListTodo, Users, ClipboardCheck, 
-  Settings, Shield, LogOut
+  LayoutDashboard, FileText, PlusCircle, ListTodo, Users,
+  Shield, LogOut
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAppContext } from "@/context/AppContext";
@@ -23,7 +23,7 @@ const agentItems = [
 ];
 
 export function AppSidebar() {
-  const { role, setIsLoggedIn } = useAppContext();
+  const { role, signOut, user } = useAppContext();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const items = role === "citizen" ? citizenItems : agentItems;
@@ -72,10 +72,27 @@ export function AppSidebar() {
       <SidebarFooter className="p-3">
         {!collapsed && (
           <SidebarMenu>
+            {user && (
+              <SidebarMenuItem>
+                <div className="flex items-center gap-2 px-3 py-2 mb-1">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt={user.displayName || ""} className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-bold text-sidebar-accent-foreground">
+                      {user.displayName?.[0] || "?"}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-sidebar-accent-foreground truncate">{user.displayName}</p>
+                    <p className="text-[10px] text-sidebar-foreground/50 truncate">{user.email}</p>
+                  </div>
+                </div>
+              </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <button
-                  onClick={() => setIsLoggedIn(false)}
+                  onClick={signOut}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all w-full"
                 >
                   <LogOut className="w-4 h-4" />

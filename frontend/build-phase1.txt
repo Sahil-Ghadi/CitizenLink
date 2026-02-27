@@ -1,0 +1,46 @@
+
+> vite_react_shadcn_ts@0.0.0 build
+> next build
+
+  ▲ Next.js 14.2.3
+  - Environments: .env
+
+   Creating an optimized production build ...
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/10) ...
+   Generating static pages (2/10) 
+   Generating static pages (4/10) 
+   Generating static pages (7/10) 
+ ✓ Generating static pages (10/10)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    4.24 kB         131 kB
+├ ○ /_not-found                          137 B          87.2 kB
+├ ○ /agent                               5.44 kB         139 kB
+├ ○ /agent/queue                         4.9 kB          139 kB
+├ ƒ /agent/resolve/[id]                  2.26 kB         141 kB
+├ ƒ /agent/ticket/[id]                   3.66 kB         142 kB
+├ ○ /dashboard                           5.98 kB         241 kB
+├ ○ /login                               3.93 kB         242 kB
+├ ○ /report                              7.65 kB         144 kB
+├ ○ /tickets                             4.16 kB         138 kB
+└ ƒ /tickets/[id]                        2.69 kB         141 kB
++ First Load JS shared by all            87 kB
+  ├ chunks/23-7d7d54879692f433.js        31.4 kB
+  ├ chunks/fd9d1056-e3680af195b857b1.js  53.6 kB
+  └ other shared chunks (total)          1.96 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
