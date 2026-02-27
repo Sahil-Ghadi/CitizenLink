@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 225 33% 98%;
+    --foreground: 219 45% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 219 45% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 219 45% 20%;
+    --primary: 219 45% 20%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 95%;
+    --secondary-foreground: 219 45% 20%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 219 15% 46%;
+    --accent: 43 96% 50%;
+    --accent-foreground: 219 45% 15%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 219 45% 20%;
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --glass: 0 0% 100% / 0.7;
+    --glass-border: 220 13% 91% / 0.5;
+    --severity-emergency: 0 72% 51%;
+    --severity-high: 25 95% 53%;
+    --severity-medium: 43 96% 50%;
+    --severity-low: 217 91% 60%;
+    --status-submitted: 217 91% 60%;
+    --status-progress: 43 96% 50%;
+    --status-resolved: 142 71% 45%;
+    --status-emergency: 0 72% 51%;
+    --navy-light: 219 30% 30%;
+    --amber-glow: 43 96% 56%;
+
+    --sidebar-background: 219 45% 15%;
+    --sidebar-foreground: 220 20% 85%;
+    --sidebar-primary: 43 96% 50%;
+    --sidebar-primary-foreground: 219 45% 15%;
+    --sidebar-accent: 219 35% 22%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 219 30% 25%;
+    --sidebar-ring: 43 96% 50%;
+  }
+
+  .dark {
+    --background: 219 45% 8%;
+    --foreground: 220 20% 90%;
+    --card: 219 40% 12%;
+    --card-foreground: 220 20% 90%;
+    --popover: 219 40% 12%;
+    --popover-foreground: 220 20% 90%;
+    --primary: 43 96% 50%;
+    --primary-foreground: 219 45% 10%;
+    --secondary: 219 30% 18%;
+    --secondary-foreground: 220 20% 90%;
+    --muted: 219 25% 16%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 43 96% 50%;
+    --accent-foreground: 219 45% 10%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 219 25% 20%;
+    --input: 219 25% 20%;
+    --ring: 43 96% 50%;
+    --sidebar-background: 219 50% 6%;
+    --sidebar-foreground: 220 15% 75%;
+    --sidebar-primary: 43 96% 50%;
+    --sidebar-primary-foreground: 219 45% 10%;
+    --sidebar-accent: 219 40% 14%;
+    --sidebar-accent-foreground: 220 20% 90%;
+    --sidebar-border: 219 35% 15%;
+    --sidebar-ring: 43 96% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Fraunces', serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/70 backdrop-blur-xl border border-border/50 rounded-2xl shadow-sm;
+  }
+  .glass-card-elevated {
+    @apply bg-card/80 backdrop-blur-xl border border-border/40 rounded-2xl shadow-lg;
+  }
+  .ai-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent-foreground border border-accent/20;
+  }
+  .stat-card {
+    @apply glass-card p-5 flex flex-col gap-1 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+  .severity-emergency {
+    @apply bg-[hsl(var(--severity-emergency))] text-white;
+  }
+  .severity-high {
+    @apply bg-[hsl(var(--severity-high))] text-white;
+  }
+  .severity-medium {
+    @apply bg-[hsl(var(--severity-medium))] text-white;
+  }
+  .severity-low {
+    @apply bg-[hsl(var(--severity-low))] text-white;
+  }
+  .status-submitted {
+    @apply bg-[hsl(var(--status-submitted))]/15 text-[hsl(var(--status-submitted))] border border-[hsl(var(--status-submitted))]/25;
+  }
+  .status-progress {
+    @apply bg-[hsl(var(--status-progress))]/15 text-[hsl(var(--status-progress))] border border-[hsl(var(--status-progress))]/25;
+  }
+  .status-resolved {
+    @apply bg-[hsl(var(--status-resolved))]/15 text-[hsl(var(--status-resolved))] border border-[hsl(var(--status-resolved))]/25;
+  }
+  .status-emergency {
+    @apply bg-[hsl(var(--status-emergency))]/15 text-[hsl(var(--status-emergency))] border border-[hsl(var(--status-emergency))]/25;
+  }
+}
+
+@layer utilities {
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out both;
+  }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
