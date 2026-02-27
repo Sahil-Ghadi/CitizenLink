@@ -4,7 +4,8 @@ import { usePathname } from "next/navigation";
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-interface NavLinkCompatProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps>, LinkProps {
+interface NavLinkCompatProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, keyof LinkProps | "href">, Omit<LinkProps, "href"> {
+  href?: LinkProps["href"];
   activeClassName?: string;
   pendingClassName?: string;
   to?: string;

@@ -9,7 +9,7 @@ const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } 
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
 
 const CitizenDashboard = () => {
-  const navigate = useRouter();
+  const router = useRouter();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const activeTickets = tickets.filter((t) => t.status !== "resolved" && t.citizenName === citizenUser.fullName);

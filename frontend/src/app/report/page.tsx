@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 const steps = ["Photo Analysis", "Location", "Details", "Review & Submit"];
 
 const ReportIssue = () => {
-  const navigate = useRouter();
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [photoUploaded, setPhotoUploaded] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -80,9 +80,8 @@ const ReportIssue = () => {
       <div className="flex items-center gap-2">
         {steps.map((s, i) => (
           <div key={s} className="flex items-center gap-2 flex-1">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-300 ${
-              i < step ? "bg-status-resolved text-primary-foreground" : i === step ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground"
-            }`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-300 ${i < step ? "bg-status-resolved text-primary-foreground" : i === step ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground"
+              }`}>
               {i < step ? <Check className="w-4 h-4" /> : i + 1}
             </div>
             {i < steps.length - 1 && <div className={`h-0.5 flex-1 rounded-full transition-colors duration-300 ${i < step ? "bg-status-resolved" : "bg-border"}`} />}

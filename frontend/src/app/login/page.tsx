@@ -10,7 +10,7 @@ import civicHero from "@/assets/civic-hero.png";
 
 const Login = () => {
   const { setIsLoggedIn, setRole } = useAppContext();
-  const navigate = useRouter();
+  const router = useRouter();
   const [mode, setMode] = useState<"citizen" | "agent">("citizen");
   const [agentCode, setAgentCode] = useState("");
   const [agentStep, setAgentStep] = useState<"code" | "google">("code");
@@ -57,7 +57,7 @@ const Login = () => {
         <div className="glass-card-elevated p-8">
           <div className="text-center mb-8">
             <motion.img
-              src={civicHero}
+              src={civicHero.src}
               alt="CitizenPortal"
               className="w-20 h-20 mx-auto mb-4 rounded-2xl"
               initial={{ scale: 0.8 }}
@@ -72,17 +72,15 @@ const Login = () => {
           <div className="flex bg-secondary rounded-xl p-1 mb-6 gap-0.5">
             <button
               onClick={() => { setMode("citizen"); setAgentStep("code"); setCodeError(""); setLocked(false); setAttempts(0); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                mode === "citizen" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
-              }`}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${mode === "citizen" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
+                }`}
             >
               Citizen
             </button>
             <button
               onClick={() => setMode("agent")}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                mode === "agent" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
-              }`}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${mode === "agent" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
+                }`}
             >
               Agent Access
             </button>

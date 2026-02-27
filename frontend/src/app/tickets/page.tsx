@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Clock, Star } from "lucide-react";
 
 const MyTickets = () => {
-  const navigate = useRouter();
+  const router = useRouter();
   const myTickets = tickets.filter((t) => t.citizenName === citizenUser.fullName);
 
   return (
