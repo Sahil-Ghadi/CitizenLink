@@ -37,6 +37,7 @@ class TicketResponse(BaseModel):
     updated_at: str
     priority_score: int
     ai_summary: Optional[str] = None
+    rejection_reason: Optional[str] = None
 
 
 class AnalyzeImageResponse(BaseModel):

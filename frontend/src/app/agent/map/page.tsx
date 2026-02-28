@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Map as MapIcon, Loader2, Sparkles } from "lucide-react";
 import { useAgentTickets } from "@/hooks/use-tickets";
@@ -14,6 +15,12 @@ const TicketHeatmap = dynamic(
 
 export default function AgentMapPage() {
     const { tickets, loading } = useAgentTickets();
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     const validTickets = tickets.filter(t => t.latitude && t.longitude && t.status !== "resolved" && t.status !== "auto-resolved");
 
     return (
@@ -67,7 +74,7 @@ export default function AgentMapPage() {
                     boxShadow: "0 4px 24px rgba(0,0,0,0.05)"
                 }}
             >
-                {loading ? (
+                {loading || !isMounted ? (
                     <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
                         <Loader2 className="w-8 h-8 animate-spin text-accent" />
                         <p className="text-sm font-medium">Initializing Map Engine...</p>

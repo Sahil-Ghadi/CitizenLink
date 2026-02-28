@@ -7,7 +7,7 @@ import {
   ArrowLeft, Send, MapPin, CheckCircle, RefreshCw,
   XCircle, Sparkles, AlertTriangle, Clock, Zap, FileText,
   Loader2, ExternalLink, Building2, ChevronRight,
-  Save, CheckCircle2
+  Save, CheckCircle2, MessageSquareX
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,6 +50,11 @@ const AgentTicketDetail = () => {
   const [activeTab, setActiveTab] = useState<"details" | "ai" | "respond">("details");
   // Local status override so the UI reflects the change immediately
   const [localStatus, setLocalStatus] = useState<string | null>(null);
+
+  // Rejection modal state
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
 
   // Populate from Firestore-persisted copilot data on load
   useEffect(() => {
@@ -152,6 +157,26 @@ const AgentTicketDetail = () => {
       console.error(e);
     } finally {
       setAccepting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!ticket || rejecting || !rejectReason.trim()) return;
+    setRejecting(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`${BACKEND_URL}/tickets/${id}/reject`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rejection_reason: rejectReason.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to reject ticket");
+      setLocalStatus("rejected");
+      setShowRejectModal(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -386,7 +411,10 @@ const AgentTicketDetail = () => {
                 <Button variant="outline" className="rounded-xl gap-2 h-9 text-sm">
                   <RefreshCw className="w-4 h-4" /> Reassign
                 </Button>
-                <Button variant="outline" className="rounded-xl gap-2 h-9 text-sm text-destructive border-destructive/20 hover:bg-destructive/5">
+                <Button variant="outline" className="rounded-xl gap-2 h-9 text-sm text-destructive border-destructive/20 hover:bg-destructive/5"
+                  onClick={() => setShowRejectModal(true)}
+                  disabled={currentStatus === "resolved" || currentStatus === "rejected" || currentStatus === "auto-resolved"}
+                >
                   <XCircle className="w-4 h-4" /> Reject
                 </Button>
               </div>
@@ -394,6 +422,54 @@ const AgentTicketDetail = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Reject Modal Overlay */}
+      <AnimatePresence>
+        {showRejectModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl relative"
+            >
+              <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mb-4">
+                <MessageSquareX className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-display font-bold text-foreground mb-1">Reject Ticket</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Please provide a clear reason for rejecting this ticket. This reason will be visible to the citizen.
+              </p>
+
+              <Textarea
+                placeholder="e.g., This issue has already been reported and is being tracked under another ticket..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="min-h-[120px] rounded-xl mb-4 text-sm resize-none"
+              />
+
+              <div className="flex justify-end gap-3 mt-6">
+                <Button variant="outline" className="rounded-xl w-full" onClick={() => setShowRejectModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground w-full gap-2"
+                  onClick={handleReject}
+                  disabled={!rejectReason.trim() || rejecting}
+                >
+                  {rejecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                  Confirm Rejection
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Tab: AI COPILOT ── */}
       {activeTab === "ai" && (

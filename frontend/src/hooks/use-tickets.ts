@@ -39,6 +39,7 @@ export interface ApiTicket {
     agent_name?: string | null;
     messages?: unknown[];
     rating?: number | null;
+    rejection_reason?: string;
 }
 
 interface UseTicketsReturn {

@@ -40,13 +40,14 @@ const TIMELINE_AI = [
   { label: "Resolved", icon: CheckCircle2 },
 ];
 const STATUS_ORDER: Record<string, number> = {
-  submitted: 0, "in-progress": 1, resolved: 3, "auto-resolved": 3,
+  submitted: 0, "in-progress": 1, resolved: 3, "auto-resolved": 3, rejected: 3,
 };
 const STATUS_META: Record<string, { label: string; color: string; dot: string }> = {
   submitted: { label: "Submitted", color: "text-blue-400", dot: "bg-blue-400" },
   "in-progress": { label: "In Progress", color: "text-amber-400", dot: "bg-amber-400" },
   resolved: { label: "Resolved", color: "text-emerald-400", dot: "bg-emerald-400" },
   "auto-resolved": { label: "Resolved", color: "text-emerald-400", dot: "bg-emerald-400" },
+  rejected: { label: "Rejected", color: "text-red-400", dot: "bg-red-400" },
 };
 const SEV_COLOR: Record<string, string> = {
   emergency: "text-red-400 bg-red-500/10 border-red-500/20",
@@ -182,78 +183,94 @@ export default function CitizenTicketDetail() {
 
       {/* ── Progress + Agent (combined card) ─────────────────────────────── */}
       <div className="glass-card p-5 space-y-5">
+
+        {/* Rejection Alert */}
+        {ticket.status === "rejected" && ticket.rejection_reason && (
+          <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <span className="font-semibold text-destructive">Ticket Rejected</span>
+            </div>
+            <p className="text-sm text-destructive/90 leading-relaxed">
+              {ticket.rejection_reason}
+            </p>
+          </div>
+        )}
+
         {/* Timeline */}
-        <div>
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4">Progress</p>
-          <div className="relative">
-            <div className="absolute left-3.5 top-3 bottom-3 w-px bg-border" />
-            <div className="space-y-4">
-              {TIMELINE.map((step, i) => {
-                const done = i <= statusIdx;
-                const active = i === statusIdx;
-                const Icon = step.icon;
-                const isResolved = i === 3;
-                const isAIStep = isAutoResolved && i === 2;
-                return (
-                  <motion.div
-                    key={i}
-                    className="flex items-center gap-3 relative"
-                    initial={false}
-                  >
+        {ticket.status !== "rejected" && (
+          <div>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4">Progress</p>
+            <div className="relative">
+              <div className="absolute left-3.5 top-3 bottom-3 w-px bg-border" />
+              <div className="space-y-4">
+                {TIMELINE.map((step, i) => {
+                  const done = i <= statusIdx;
+                  const active = i === statusIdx;
+                  const Icon = step.icon;
+                  const isResolved = i === 3;
+                  const isAIStep = isAutoResolved && i === 2;
+                  return (
                     <motion.div
-                      animate={{
-                        scale: done ? (active ? 1.1 : 1) : 1,
-                        backgroundColor: done
-                          ? active
-                            ? isResolved ? "#10b981" : isAIStep ? "hsl(var(--accent))" : "hsl(var(--accent))"
-                            : "hsl(var(--status-resolved))"
-                          : "hsl(var(--secondary))",
-                      }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 ${active && done
-                        ? isResolved
-                          ? "ring-2 ring-emerald-500/30"
-                          : isAIStep
-                            ? "ring-2 ring-accent/30"
-                            : "ring-2 ring-accent/30"
-                        : ""
-                        }`}
+                      key={i}
+                      className="flex items-center gap-3 relative"
+                      initial={false}
                     >
                       <motion.div
-                        animate={{ scale: done ? 1 : 0.7, opacity: done ? 1 : 0.4 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <Icon className={`w-3.5 h-3.5 ${done ? "text-white" : "text-muted-foreground"} ${active && i === 1 && !isAutoResolved ? "animate-spin" : ""
-                          }`} />
-                      </motion.div>
-                    </motion.div>
-
-                    <div className="flex-1 flex items-center justify-between">
-                      <motion.p
                         animate={{
-                          color: done
-                            ? active && isResolved ? "rgb(52 211 153)" : "hsl(var(--foreground))"
-                            : "hsl(var(--muted-foreground))",
+                          scale: done ? (active ? 1.1 : 1) : 1,
+                          backgroundColor: done
+                            ? active
+                              ? isResolved ? "#10b981" : isAIStep ? "hsl(var(--accent))" : "hsl(var(--accent))"
+                              : "hsl(var(--status-resolved))"
+                            : "hsl(var(--secondary))",
                         }}
-                        transition={{ duration: 0.4 }}
-                        className="text-sm font-medium"
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 ${active && done
+                          ? isResolved
+                            ? "ring-2 ring-emerald-500/30"
+                            : isAIStep
+                              ? "ring-2 ring-accent/30"
+                              : "ring-2 ring-accent/30"
+                          : ""
+                          }`}
                       >
-                        {step.label}
-                        {i === 2 && ticket.agent_name && !isAutoResolved && (
-                          <span className="ml-2 text-xs text-muted-foreground font-normal">({ticket.agent_name})</span>
+                        <motion.div
+                          animate={{ scale: done ? 1 : 0.7, opacity: done ? 1 : 0.4 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <Icon className={`w-3.5 h-3.5 ${done ? "text-white" : "text-muted-foreground"} ${active && i === 1 && !isAutoResolved ? "animate-spin" : ""
+                            }`} />
+                        </motion.div>
+                      </motion.div>
+
+                      <div className="flex-1 flex items-center justify-between">
+                        <motion.p
+                          animate={{
+                            color: done
+                              ? active && isResolved ? "rgb(52 211 153)" : "hsl(var(--foreground))"
+                              : "hsl(var(--muted-foreground))",
+                          }}
+                          transition={{ duration: 0.4 }}
+                          className="text-sm font-medium"
+                        >
+                          {step.label}
+                          {i === 2 && ticket.agent_name && !isAutoResolved && (
+                            <span className="ml-2 text-xs text-muted-foreground font-normal">({ticket.agent_name})</span>
+                          )}
+                        </motion.p>
+                        {i === 0 && <span className="text-[10px] text-muted-foreground">{fmt(ticket.created_at)}</span>}
+                        {i === 3 && (ticket.status === "resolved" || ticket.status === "auto-resolved") && (
+                          <span className="text-[10px] text-muted-foreground">{fmt(ticket.updated_at)}</span>
                         )}
-                      </motion.p>
-                      {i === 0 && <span className="text-[10px] text-muted-foreground">{fmt(ticket.created_at)}</span>}
-                      {i === 3 && (ticket.status === "resolved" || ticket.status === "auto-resolved") && (
-                        <span className="text-[10px] text-muted-foreground">{fmt(ticket.updated_at)}</span>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Priority bar */}
         <div className="border-t border-border pt-4">

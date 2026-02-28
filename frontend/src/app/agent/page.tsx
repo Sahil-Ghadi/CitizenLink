@@ -66,7 +66,7 @@ export default function AgentDashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const activeTickets = tickets.filter((t) => t.status !== "resolved" && t.status !== "auto-resolved");
+  const activeTickets = tickets.filter((t) => t.status !== "resolved" && t.status !== "auto-resolved" && t.status !== "rejected");
   const inProgress = tickets.filter((t) => t.status === "in-progress");
   const emergency = tickets.filter((t) => t.severity === "emergency");
   const resolvedAll = tickets.filter((t) => t.status === "resolved" || t.status === "auto-resolved");

@@ -22,6 +22,7 @@ const STATUS_META: Record<string, { label: string; color: string; dot: string }>
   "in-progress": { label: "In Progress", color: "text-amber-400", dot: "bg-amber-400" },
   resolved: { label: "Resolved", color: "text-emerald-400", dot: "bg-emerald-400" },
   emergency: { label: "Emergency", color: "text-red-400", dot: "bg-red-400" },
+  rejected: { label: "Rejected", color: "text-red-400", dot: "bg-red-400" },
 };
 
 const SEV_COLOR: Record<string, string> = {
@@ -213,7 +214,9 @@ export default function MyTicketsPage() {
                   onClick={() => router.push(`/tickets/${ticket.id}`)}
                   className={`glass-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group ${(ticket.status === "resolved" || ticket.status === "auto-resolved")
                     ? "border-l-4 border-l-emerald-500 bg-emerald-500/5"
-                    : ""
+                    : ticket.status === "rejected"
+                      ? "border-l-4 border-l-destructive bg-destructive/5"
+                      : ""
                     }`}
                 >
                   <div className="flex items-start gap-4">

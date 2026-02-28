@@ -30,86 +30,107 @@ export default function TicketHeatmap({ points, height = 340 }: Props) {
 
         let isMounted = true;
         let mapInstance: any = null;
+        const isUnmounted = { current: false };
 
         import("leaflet").then((L) => {
-            if (!isMounted || !mapRef.current) return;
+            // Delay initialization until the next tick so the DOM is fully painted
+            setTimeout(() => {
+                // Hard abort if the user navigated away from the page during the async module load.
+                // This stops the `_leaflet_pos is undefined` crash occurring on page switching.
+                if (isUnmounted.current || !mapRef.current) return;
+                if (!document.body.contains(mapRef.current)) return;
 
-            // Handle React 18 Strict Mode double-initialization
-            if ((mapRef.current as any)._leaflet_id) {
-                return;
-            }
+                // Handle React 18 Strict Mode double-initialization
+                if ((mapRef.current as any)._leaflet_id) {
+                    return;
+                }
 
-            const validPoints = points.filter((p) => p.lat && p.lng);
-            const centerLat = validPoints.length > 0 ? validPoints[0].lat : 19.076;
-            const centerLng = validPoints.length > 0 ? validPoints[0].lng : 72.8777;
+                const validPoints = points.filter((p) => p.lat && p.lng);
+                const centerLat = validPoints.length > 0 ? validPoints[0].lat : 19.076;
+                const centerLng = validPoints.length > 0 ? validPoints[0].lng : 72.8777;
 
-            // Initialize map
-            mapInstance = L.map(mapRef.current, {
-                center: [centerLat, centerLng],
-                zoom: 11,
-                scrollWheelZoom: false,
-                attributionControl: false,
-            });
+                try {
+                    // Initialize map safely within try-catch to prevent unmount crashes
+                    mapInstance = L.map(mapRef.current, {
+                        center: [centerLat, centerLng],
+                        zoom: 11,
+                        scrollWheelZoom: false,
+                        attributionControl: false,
+                    });
 
-            leafletData.current.map = mapInstance;
+                    // Final parity check
+                    if (isUnmounted.current) {
+                        mapInstance.remove();
+                        return;
+                    }
+                } catch (error) {
+                    console.error("Leaflet map initialization error:", error);
+                    // If an error occurs during initialization, ensure mapInstance is null
+                    mapInstance = null;
+                    return; // Stop further execution if initialization failed
+                }
 
-            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap'
-            }).addTo(mapInstance);
+                leafletData.current.map = mapInstance;
 
-            // Add heatmap circles
-            validPoints.forEach((p) => {
-                const color = SEV_COLOR[p.severity] ?? SEV_COLOR["medium"];
-                const radius = p.severity === "emergency" ? 18
-                    : p.severity === "high" ? 14
-                        : p.severity === "medium" ? 10 : 8;
-
-                // Outer Glow
-                const outer = L.circleMarker([p.lat, p.lng], {
-                    fillColor: color,
-                    color: color,
-                    weight: 0,
-                    fillOpacity: 0.18,
-                    interactive: false,
-                    radius: radius + 6,
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap'
                 }).addTo(mapInstance);
 
-                // Inner Core
-                const inner = L.circleMarker([p.lat, p.lng], {
-                    fillColor: color,
-                    color: color,
-                    weight: 1.5,
-                    fillOpacity: 0.6,
-                    radius: radius,
-                }).addTo(mapInstance);
+                // Add heatmap circles
+                validPoints.forEach((p) => {
+                    const color = SEV_COLOR[p.severity] ?? SEV_COLOR["medium"];
+                    const radius = p.severity === "emergency" ? 18
+                        : p.severity === "high" ? 14
+                            : p.severity === "medium" ? 10 : 8;
 
-                const tooltipHtml = `
-          <div style="font-size: 13px; font-weight: 700; color: #0f172a; font-family: inherit;">${p.title}</div>
-          <div style="font-size: 11px; font-weight: 600; opacity: 0.8; margin-top: 3px; text-transform: capitalize; color: #334155; font-family: inherit;">
-            ${p.severity}
-          </div>
-        `;
+                    // Outer Glow
+                    const outer = L.circleMarker([p.lat, p.lng], {
+                        fillColor: color,
+                        color: color,
+                        weight: 0,
+                        fillOpacity: 0.18,
+                        interactive: false,
+                        radius: radius + 6,
+                    }).addTo(mapInstance);
 
-                inner.bindTooltip(tooltipHtml, {
-                    direction: "top",
-                    offset: [0, -8],
-                    className: "leaflet-tooltip-light",
-                    opacity: 1,
+                    // Inner Core
+                    const inner = L.circleMarker([p.lat, p.lng], {
+                        fillColor: color,
+                        color: color,
+                        weight: 1.5,
+                        fillOpacity: 0.6,
+                        radius: radius,
+                    }).addTo(mapInstance);
+
+                    const tooltipHtml = `
+            <div style="font-size: 13px; font-weight: 700; color: #0f172a; font-family: inherit;">${p.title}</div>
+            <div style="font-size: 11px; font-weight: 600; opacity: 0.8; margin-top: 3px; text-transform: capitalize; color: #334155; font-family: inherit;">
+              ${p.severity}
+            </div>
+          `;
+
+                    inner.bindTooltip(tooltipHtml, {
+                        direction: "top",
+                        offset: [0, -8],
+                        className: "leaflet-tooltip-light",
+                        opacity: 1,
+                    });
+
+                    leafletData.current.markers.push(outer, inner);
                 });
 
-                leafletData.current.markers.push(outer, inner);
-            });
-
-            // Fit bounds if we have points
-            if (validPoints.length > 0 && mapInstance) {
-                const bounds = L.latLngBounds(validPoints.map(p => [p.lat, p.lng]));
-                mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-            }
+                // Fit bounds if we have points
+                if (validPoints.length > 0 && mapInstance) {
+                    const bounds = L.latLngBounds(validPoints.map(p => [p.lat, p.lng]));
+                    mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+                }
+            }, 0);
         });
 
         return () => {
             isMounted = false;
+            isUnmounted.current = true;
             if (leafletData.current.map) {
                 leafletData.current.map.remove();
                 leafletData.current.map = null;

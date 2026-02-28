@@ -91,10 +91,6 @@ export default function LandingPage() {
                     animate="show"
                     className="max-w-4xl mx-auto text-center"
                 >
-                    <motion.div variants={item} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-xs font-medium text-accent mb-6">
-                        <Sparkles className="w-3 h-3" />
-                        AI-Powered Civic Issue Resolution
-                    </motion.div>
 
                     <motion.h1 variants={item} className="text-5xl sm:text-6xl lg:text-7xl font-display font-bold leading-tight tracking-tight mb-6">
                         Report.{" "}

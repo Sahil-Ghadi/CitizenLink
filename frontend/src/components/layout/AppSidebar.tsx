@@ -39,7 +39,7 @@ export function AppSidebar() {
                   <Shield className="w-4 h-4 text-sidebar-primary-foreground" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-sidebar-accent-foreground tracking-tight">CitizenPortal</h2>
+                  <h2 className="text-sm text-sidebar-accent-foreground">Citizen Portal</h2>
                   <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-widest">Gov • Services</p>
                 </div>
               </div>
