@@ -9,6 +9,7 @@ load_dotenv()
 from routers import auth as auth_router
 from routers import tickets as tickets_router
 from routers import agents as agents_router
+from routers import chat as chat_router
 
 app = FastAPI(
     title="CitizenLink API",
@@ -30,6 +31,7 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(tickets_router.router)
 app.include_router(agents_router.router)
+app.include_router(chat_router.router)
 
 
 @app.get("/health")

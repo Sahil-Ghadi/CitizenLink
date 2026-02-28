@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { getIdToken } from "@/lib/auth";
 import { useAppContext } from "@/context/AppContext";
+import CitizenAskAI from "@/components/shared/CitizenAskAI";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -310,6 +311,9 @@ export default function CitizenTicketDetail() {
           ))}
         </div>
       )}
+
+      {/* ── Ask AI ─────────────────────────────────────────────────────────────── */}
+      <CitizenAskAI ticketId={ticket.id} messageCount={messages.length} />
 
       {/* ── Details (description + meta grid) ──────────────────────────────── */}
       <div className="glass-card p-5 space-y-4">
