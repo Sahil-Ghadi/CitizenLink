@@ -19,11 +19,22 @@ const SEV_COLOR: Record<string, string> = {
 interface Props {
     points: HeatPoint[];
     height?: number;
+    focusPoint?: { lat: number; lng: number; zoom?: number } | null;
 }
 
-export default function TicketHeatmap({ points, height = 340 }: Props) {
+export default function TicketHeatmap({ points, height = 340, focusPoint }: Props) {
     const mapRef = useRef<HTMLDivElement>(null);
     const leafletData = useRef<{ map: any; markers: any[] }>({ map: null, markers: [] });
+
+    // Fly to focusPoint whenever it changes (triggered by clicking an insight)
+    useEffect(() => {
+        const map = leafletData.current.map;
+        if (!map || !focusPoint) return;
+        map.flyTo([focusPoint.lat, focusPoint.lng], focusPoint.zoom ?? 15, {
+            animate: true,
+            duration: 1.2,
+        });
+    }, [focusPoint]);
 
     useEffect(() => {
         if (typeof window === "undefined" || !mapRef.current) return;
