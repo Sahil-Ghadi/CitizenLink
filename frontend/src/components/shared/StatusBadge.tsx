@@ -7,22 +7,26 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   "auto-resolved": { label: "Resolved", className: "status-resolved" },
   emergency: { label: "Emergency", className: "status-emergency" },
   rejected: { label: "Rejected", className: "status-submitted" },
+  reopened: { label: "Reopened", className: "status-progress" },
 };
 
-const severityConfig = {
+const severityConfig: Record<string, { label: string; className: string }> = {
   emergency: { label: "Emergency", className: "severity-emergency" },
   high: { label: "High", className: "severity-high" },
   medium: { label: "Medium", className: "severity-medium" },
   low: { label: "Low", className: "severity-low" },
 };
 
-export const StatusBadge = ({ status }: { status: keyof typeof statusConfig }) => {
-  const c = statusConfig[status];
+const FALLBACK_STATUS = { label: "Unknown", className: "status-submitted" };
+const FALLBACK_SEVERITY = { label: "Unknown", className: "severity-medium" };
+
+export const StatusBadge = ({ status }: { status: string }) => {
+  const c = statusConfig[status] ?? FALLBACK_STATUS;
   return <span className={cn("inline-flex px-2.5 py-1 rounded-full text-xs font-semibold", c.className)}>{c.label}</span>;
 };
 
-export const SeverityBadge = ({ severity }: { severity: keyof typeof severityConfig }) => {
-  const c = severityConfig[severity];
+export const SeverityBadge = ({ severity }: { severity: string }) => {
+  const c = severityConfig[severity] ?? FALLBACK_SEVERITY;
   return <span className={cn("inline-flex px-2.5 py-1 rounded-full text-xs font-semibold", c.className)}>{c.label}</span>;
 };
 

@@ -39,8 +39,13 @@ def insight_generator_node(state: TicketState) -> Dict[str, Any]:
     messages = [
         SystemMessage(content=(
             "You are an AI Copilot assisting a civic agency agent. "
-            "Examine the complaint and available context to provide a recommended action, "
-            "an effort estimate, and a risk level assessment."
+            "Examine the complaint and context provided, then respond with:\n"
+            "- recommended_action: EXACTLY 3–6 numbered action steps, one per line, "
+            "formatted as '1. <step>', '2. <step>', etc. "
+            "Each step must be a concrete, specific action the agent should take. "
+            "Do NOT write any introduction, summary, or trailing sentence — ONLY the numbered list.\n"
+            "- effort_estimate: a short time estimate (e.g., '2–4 hours', '1 day', 'Low effort').\n"
+            "- risk_level: exactly one of 'low', 'medium', or 'high'."
         )),
         HumanMessage(content=f"Complaint: {description}\n\nContext:\n{context}")
     ]

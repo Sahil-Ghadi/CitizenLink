@@ -15,6 +15,7 @@ import { runCopilot, type CopilotResponse } from "@/lib/api/agents";
 import { getIdToken } from "@/lib/auth";
 import { useTicketById } from "@/hooks/use-tickets";
 import dynamic from "next/dynamic";
+import EscalationBanner from "@/components/shared/EscalationBanner";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -48,6 +49,7 @@ const AgentTicketDetail = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageSent, setMessageSent] = useState(false);
   const [activeTab, setActiveTab] = useState<"details" | "ai" | "respond">("details");
+  const [escalationAcknowledged, setEscalationAcknowledged] = useState(false);
   // Local status override so the UI reflects the change immediately
   const [localStatus, setLocalStatus] = useState<string | null>(null);
 
@@ -271,6 +273,18 @@ const AgentTicketDetail = () => {
         )}
       </AnimatePresence>
 
+      {/* ── Escalation Banner ─────────────────────────────── */}
+      {ticket && (ticket as any).escalated && (
+        <EscalationBanner
+          ticketId={ticket.id}
+          level={(ticket as any).escalation_level ?? 1}
+          reason={(ticket as any).escalation_reason}
+          escalatedAt={(ticket as any).escalated_at}
+          acknowledged={(ticket as any).escalation_acknowledged || escalationAcknowledged}
+          onAcknowledge={() => setEscalationAcknowledged(true)}
+        />
+      )}
+
       {/* Tab bar */}
       <div className="flex gap-1 bg-secondary p-1 rounded-xl">
         {(["details", "ai", "respond"] as const).map((tab) => (
@@ -278,6 +292,9 @@ const AgentTicketDetail = () => {
             className={`flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-all ${activeTab === tab ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}>
             {tab === "ai" ? "🤖 AI Copilot" : tab === "respond" ? "✉️ Respond" : "📋 Details"}
+            {tab === "details" && ticket && (ticket as any).escalated && !escalationAcknowledged && !(ticket as any).escalation_acknowledged && (
+              <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 inline-block animate-pulse" />
+            )}
             {tab === "ai" && hasCopilot && (
               <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
             )}
@@ -506,46 +523,158 @@ const AgentTicketDetail = () => {
             </div>
           )}
 
-          {hasCopilot && !copilotLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Recommended Action */}
-              <div className="md:col-span-2 glass-card p-4 bg-accent/5 border border-accent/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-4 h-4 text-accent" />
-                  <span className="text-sm font-semibold text-foreground">Recommended Action</span>
-                  <AiBadge />
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{copilotData.recommended_action}</p>
-              </div>
+          {hasCopilot && !copilotLoading && (() => {
+            // Parse recommended_action text into discrete steps
+            const raw: string = copilotData.recommended_action ?? "";
+            // Split on newlines OR inline numbered markers like ". 2. " / " 2. " / "2. "
+            const steps: string[] = raw
+              .split(/\n+|\s+(?=\d+[\.\)]\s)/)
+              .map((s) => s.replace(/^\s*\d+[\.\)]\s*/, "").replace(/^\s*[-•]\s*/, "").trim())
+              .filter(Boolean);
 
-              {/* Effort + Risk */}
-              <div className="glass-card p-4 space-y-3">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Effort Estimate</p>
-                  <span className="text-sm font-bold px-3 py-1 rounded-full bg-accent/15 text-accent-foreground">
-                    {copilotData.effort_estimate}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Risk Level</p>
-                  <span className={`text-sm font-bold px-3 py-1 rounded-full capitalize ${copilotData.risk_level === "high" ? "bg-red-500/10 text-red-400"
-                    : copilotData.risk_level === "medium" ? "bg-amber-500/10 text-amber-400"
-                      : "bg-green-500/10 text-green-400"
-                    }`}>
-                    {copilotData.risk_level}
-                  </span>
-                </div>
-                {ticket.copilot_run_at && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Last run</p>
-                    <p className="text-xs font-medium text-foreground">
-                      {new Date(ticket.copilot_run_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    </p>
+
+            const STEP_ICONS = [
+              // search / assess
+              <svg key="s" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>,
+              // tool / action
+              <svg key="t" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
+              // notify / comms
+              <svg key="n" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>,
+              // verify / shield
+              <svg key="v" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
+            ];
+
+            const riskColor =
+              copilotData.risk_level === "high" ? { bg: "bg-red-500/15", text: "text-red-400", bar: "bg-red-400", pct: 85 } :
+                copilotData.risk_level === "medium" ? { bg: "bg-amber-500/15", text: "text-amber-400", bar: "bg-amber-400", pct: 50 } :
+                  { bg: "bg-green-500/15", text: "text-green-400", bar: "bg-green-400", pct: 20 };
+
+            const effortPct =
+              /high|complex|major/i.test(copilotData.effort_estimate) ? 80 :
+                /medium|moderate/i.test(copilotData.effort_estimate) ? 50 : 25;
+
+            return (
+              <div className="space-y-4">
+                {/* ── Header row ─────────────────────────────────────── */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center">
+                      <Zap className="w-3.5 h-3.5 text-accent" />
+                    </div>
+                    <span className="text-sm font-bold text-foreground">Action Plan</span>
+                    <AiBadge />
                   </div>
-                )}
+                  {ticket.copilot_run_at && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(ticket.copilot_run_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* ── Step graph (2/3 width) ───────────────────────── */}
+                  <div className="md:col-span-2 glass-card p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4">
+                      {steps.length} step{steps.length !== 1 ? "s" : ""} recommended
+                    </p>
+                    <ol className="relative space-y-0">
+                      {steps.map((step, idx) => {
+                        const isLast = idx === steps.length - 1;
+                        const icon = STEP_ICONS[idx % STEP_ICONS.length];
+                        return (
+                          <li key={idx} className="flex gap-4 group">
+                            {/* Node + connector line */}
+                            <div className="flex flex-col items-center">
+                              <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: idx * 0.08, type: "spring", stiffness: 400 }}
+                                className="relative z-10 w-8 h-8 rounded-full bg-accent/15 border-2 border-accent/30 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent/25 group-hover:border-accent/50 transition-all"
+                              >
+                                {icon}
+                                {/* Step number */}
+                                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-accent text-[9px] font-bold text-accent-foreground flex items-center justify-center shadow-sm">
+                                  {idx + 1}
+                                </span>
+                              </motion.div>
+                              {/* Connecting line */}
+                              {!isLast && (
+                                <motion.div
+                                  initial={{ scaleY: 0 }}
+                                  animate={{ scaleY: 1 }}
+                                  transition={{ delay: idx * 0.08 + 0.15, duration: 0.3 }}
+                                  className="w-px flex-1 bg-gradient-to-b from-accent/40 to-accent/10 origin-top mt-1 mb-1 min-h-[28px]"
+                                />
+                              )}
+                            </div>
+                            {/* Step content */}
+                            <motion.div
+                              initial={{ opacity: 0, x: -6 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: idx * 0.08 + 0.05 }}
+                              className={`pb-5 flex-1 min-w-0 ${isLast ? "pb-0" : ""}`}
+                            >
+                              <p className="text-sm text-foreground leading-relaxed pt-1">{step}</p>
+                            </motion.div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+
+                  {/* ── Metrics panel (1/3 width) ────────────────────── */}
+                  <div className="space-y-3">
+                    {/* Risk */}
+                    <div className={`glass-card p-4 border ${riskColor.bg} border-current/20`}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Risk Level</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-lg font-display font-bold capitalize ${riskColor.text}`}>
+                          {copilotData.risk_level}
+                        </span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${riskColor.bg} ${riskColor.text}`}>
+                          {riskColor.pct}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${riskColor.pct}%` }}
+                          transition={{ duration: 0.8, ease: "easeOut" }}
+                          className={`h-full rounded-full ${riskColor.bar}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Effort */}
+                    <div className="glass-card p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Effort Estimate</p>
+                      <p className="text-sm font-semibold text-foreground mb-2">{copilotData.effort_estimate}</p>
+                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${effortPct}%` }}
+                          transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                          className="h-full rounded-full bg-accent"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Steps count */}
+                    <div className="glass-card p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                        <span className="text-lg font-display font-bold text-accent">{steps.length}</span>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">Action Steps</p>
+                        <p className="text-[10px] text-muted-foreground">AI recommended</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
+
 
           {/* Emergency flag */}
           {ticket.severity === "emergency" && (

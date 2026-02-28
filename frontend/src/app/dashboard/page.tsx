@@ -28,6 +28,7 @@ const STATUS_CONFIG: Record<string, { dot: string; label: string; pill: string }
   resolved: { dot: "bg-emerald-400", label: "Resolved", pill: "bg-emerald-400/10 text-emerald-400" },
   "auto-resolved": { dot: "bg-emerald-400", label: "Resolved", pill: "bg-emerald-400/10 text-emerald-400" },
   emergency: { dot: "bg-red-400", label: "Emergency", pill: "bg-red-400/10 text-red-400" },
+  reopened: { dot: "bg-orange-400", label: "Reopened", pill: "bg-orange-400/10 text-orange-400" },
 };
 
 function timeAgo(iso: string) {
@@ -211,7 +212,10 @@ export default function CitizenDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                   onClick={() => router.push(`/tickets/${ticket.id}`)}
-                  className="glass-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group"
+                  className={`glass-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group ${ticket.status === "reopened"
+                      ? "border-l-4 border-l-orange-500 bg-orange-500/5"
+                      : ""
+                    }`}
                 >
                   <div className="flex items-start gap-4">
                     {ticket.photo_urls?.[0] ? (

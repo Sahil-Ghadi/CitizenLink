@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { getIdToken } from "@/lib/auth";
 import { useAppContext } from "@/context/AppContext";
 import CitizenAskAI from "@/components/shared/CitizenAskAI";
+import TicketFeedback from "@/components/shared/TicketFeedback";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -41,7 +42,7 @@ const TIMELINE_AI = [
   { label: "Resolved", icon: CheckCircle2 },
 ];
 const STATUS_ORDER: Record<string, number> = {
-  submitted: 0, "in-progress": 1, resolved: 3, "auto-resolved": 3, rejected: 3,
+  submitted: 0, "in-progress": 1, resolved: 3, "auto-resolved": 3, rejected: 3, reopened: 1,
 };
 const STATUS_META: Record<string, { label: string; color: string; dot: string }> = {
   submitted: { label: "Submitted", color: "text-blue-400", dot: "bg-blue-400" },
@@ -49,6 +50,7 @@ const STATUS_META: Record<string, { label: string; color: string; dot: string }>
   resolved: { label: "Resolved", color: "text-emerald-400", dot: "bg-emerald-400" },
   "auto-resolved": { label: "Resolved", color: "text-emerald-400", dot: "bg-emerald-400" },
   rejected: { label: "Rejected", color: "text-red-400", dot: "bg-red-400" },
+  reopened: { label: "Reopened — Under Review", color: "text-orange-400", dot: "bg-orange-400" },
 };
 const SEV_COLOR: Record<string, string> = {
   emergency: "text-red-400 bg-red-500/10 border-red-500/20",
@@ -142,6 +144,11 @@ export default function CitizenTicketDetail() {
   const statusMeta = STATUS_META[ticket.status] ?? STATUS_META["submitted"];
   const sevClass = SEV_COLOR[ticket.severity] ?? SEV_COLOR["medium"];
   const messages: any[] = ticket.messages || [];
+
+  /** Patch ticket state in-place after child (TicketFeedback) makes API calls */
+  const patchTicket = (update: { rating?: number; status?: string }) => {
+    setTicket((prev: any) => ({ ...prev, ...update }));
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
@@ -365,23 +372,15 @@ export default function CitizenTicketDetail() {
         </div>
       )}
 
-      {/* ── Rating (resolved only) ─────────────────────────────────────────── */}
-      {(ticket.status === "resolved" || ticket.status === "auto-resolved") && (
-        <div className="glass-card p-5">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Your Rating</p>
-          {ticket.rating != null ? (
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className={`w-5 h-5 ${i < ticket.rating ? "text-accent fill-accent" : "text-border"}`} />
-                ))}
-              </div>
-              <span className="text-sm text-muted-foreground">{ticket.rating}/5</span>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Not yet rated</p>
-          )}
-        </div>
+      {/* ── Feedback / Rating ─────────────────────────────────────────────────────────────── */}
+      {(ticket.status === "resolved" || ticket.status === "auto-resolved" || ticket.status === "reopened") && (
+        <TicketFeedback
+          ticketId={ticket.id}
+          existingRating={ticket.rating ?? null}
+          existingFeedback={ticket.rating_feedback ?? null}
+          isReopened={ticket.status === "reopened"}
+          onUpdate={patchTicket}
+        />
       )}
 
       {/* ── CTA ────────────────────────────────────────────────────────────── */}

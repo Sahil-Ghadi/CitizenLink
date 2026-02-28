@@ -21,8 +21,10 @@ const STATUS_META: Record<string, { label: string; color: string; dot: string }>
   submitted: { label: "Submitted", color: "text-blue-400", dot: "bg-blue-400" },
   "in-progress": { label: "In Progress", color: "text-amber-400", dot: "bg-amber-400" },
   resolved: { label: "Resolved", color: "text-emerald-400", dot: "bg-emerald-400" },
+  "auto-resolved": { label: "Resolved", color: "text-emerald-400", dot: "bg-emerald-400" },
   emergency: { label: "Emergency", color: "text-red-400", dot: "bg-red-400" },
   rejected: { label: "Rejected", color: "text-red-400", dot: "bg-red-400" },
+  reopened: { label: "Reopened", color: "text-orange-400", dot: "bg-orange-400" },
 };
 
 const SEV_COLOR: Record<string, string> = {
@@ -216,7 +218,9 @@ export default function MyTicketsPage() {
                     ? "border-l-4 border-l-emerald-500 bg-emerald-500/5"
                     : ticket.status === "rejected"
                       ? "border-l-4 border-l-destructive bg-destructive/5"
-                      : ""
+                      : ticket.status === "reopened"
+                        ? "border-l-4 border-l-orange-500 bg-orange-500/5"
+                        : ""
                     }`}
                 >
                   <div className="flex items-start gap-4">

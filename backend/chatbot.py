@@ -86,3 +86,51 @@ def get_ai_reply(question: str, ticket: dict, messages: list[dict]) -> str:
         HumanMessage(content=question),
     ])
     return result.content.strip()
+
+
+def summarize_for_escalation(ticket: dict, messages: list[dict]) -> str:
+    """
+    Generate a concise escalation briefing for a human agent.
+    Covers: what the issue is, current state, citizen feedback, and recommended action.
+
+    Returns:
+        3–5 sentence plain-text summary an agent can read in seconds.
+    """
+    msg_block = ""
+    if messages:
+        lines = []
+        for m in messages:
+            sender = "AI" if m.get("from") == "llm" else ("System" if m.get("from") == "system" else m.get("sender_name", "Unknown"))
+            lines.append(f"[{sender}] {m.get('text', '').strip()}")
+        msg_block = "\n".join(lines)
+    else:
+        msg_block = "(No messages yet)"
+
+    prompt = f"""You are a municipal operations assistant. Write a concise escalation briefing for a human agent.
+
+TICKET:
+- ID: {ticket.get('id')}
+- Title: {ticket.get('title')}
+- Category: {ticket.get('category')} / {ticket.get('department')}
+- Status: {ticket.get('status')}
+- Severity: {ticket.get('severity')}
+- Priority Score: {ticket.get('priority_score')}
+- Location: {ticket.get('location_address', 'Not specified')}
+- Filed: {ticket.get('created_at')}
+- Reopened: {'Yes — ' + ticket.get('reopen_reason', '') if ticket.get('status') == 'reopened' else 'No'}
+- Escalation Reason: {ticket.get('escalation_reason', 'Not specified')}
+- Description: {ticket.get('description', 'None')}
+
+MESSAGES ON TICKET:
+{msg_block}
+
+Write 3–5 plain-text sentences (no markdown, no bullets) that capture:
+1. What the issue is and where
+2. Current status and how long it's been open
+3. What the citizen has reported / any updates
+4. Why it was escalated
+5. What the agent should do next
+"""
+    result = llm.invoke([HumanMessage(content=prompt)])
+    return result.content.strip()
+

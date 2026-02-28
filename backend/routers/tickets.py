@@ -691,3 +691,104 @@ async def get_ticket_by_id(ticket_id: str, authorization: str = Header(...)):
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return doc.to_dict()
+
+
+# ── Rate a resolved ticket ────────────────────────────────────────────────────
+@router.post("/{ticket_id}/rate")
+async def rate_ticket(ticket_id: str, body: dict, authorization: str = Header(...)):
+    """
+    Citizen submits a rating (1–5) and optional feedback text for a resolved ticket.
+    body: { rating: int, feedback?: str }
+    """
+    decoded = verify_token(authorization)
+    citizen_uid = decoded["uid"]
+
+    rating = body.get("rating")
+    if not isinstance(rating, int) or not (1 <= rating <= 5):
+        raise HTTPException(status_code=400, detail="rating must be an integer between 1 and 5")
+
+    doc_ref = db.collection("tickets").document(ticket_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    data = doc.to_dict()
+    if data.get("citizen_uid") != citizen_uid:
+        raise HTTPException(status_code=403, detail="You can only rate your own tickets")
+    if data.get("status") not in ("resolved", "auto-resolved", "reopened"):
+        raise HTTPException(status_code=400, detail="Only resolved tickets can be rated")
+
+    now = datetime.now(timezone.utc).isoformat()
+    update_payload: dict = {
+        "rating": rating,
+        "rated_at": now,
+        "updated_at": now,
+    }
+    if body.get("feedback"):
+        update_payload["rating_feedback"] = body["feedback"].strip()
+
+    doc_ref.update(update_payload)
+    return {"success": True, "rating": rating}
+
+
+# ── Reopen a resolved ticket ──────────────────────────────────────────────────
+@router.post("/{ticket_id}/reopen")
+async def reopen_ticket(ticket_id: str, body: dict, authorization: str = Header(...)):
+    """
+    Citizen reopens a resolved ticket (typically after a low rating).
+    Sets status → 'reopened', records reopen_reason, appends a system message.
+    body: { reason?: str }
+    """
+    decoded = verify_token(authorization)
+    citizen_uid = decoded["uid"]
+
+    doc_ref = db.collection("tickets").document(ticket_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    data = doc.to_dict()
+    if data.get("citizen_uid") != citizen_uid:
+        raise HTTPException(status_code=403, detail="You can only reopen your own tickets")
+    if data.get("status") not in ("resolved", "auto-resolved"):
+        raise HTTPException(status_code=400, detail="Only resolved tickets can be reopened")
+
+    reason = (body.get("reason") or "").strip() or "Citizen reported the issue was not resolved satisfactorily."
+    now = datetime.now(timezone.utc).isoformat()
+    reopen_count = (data.get("reopen_count") or 0) + 1
+
+    # Append a system message visible to the agent
+    system_msg = {
+        "id": str(uuid.uuid4()),
+        "from": "system",
+        "sender_uid": citizen_uid,
+        "sender_name": "Citizen",
+        "text": f"🔄 Ticket reopened by citizen (reopen #{reopen_count}).\nReason: {reason}",
+        "sent_at": now,
+    }
+    existing_messages = data.get("messages", []) or []
+    existing_messages.append(system_msg)
+
+    escalation_level = 3 if reopen_count >= 2 else 2
+
+    doc_ref.update({
+        "status":                     "reopened",
+        "reopen_reason":              reason,
+        "reopen_count":               reopen_count,
+        "reopened_at":                now,
+        "updated_at":                 now,
+        "messages":                   existing_messages,
+        # Route directly to human agent (overrides LLM auto-resolve routing)
+        "triage_routed_to":           "human",
+        # Immediately escalate — don't wait for background scan
+        "escalated":                  True,
+        "escalation_level":           escalation_level,
+        "escalation_reason":          f"Citizen reopened (#{reopen_count}): {reason}",
+        "escalated_at":               now,
+        "escalation_acknowledged":    False,
+        "escalation_acknowledged_by": None,
+        "escalation_acknowledged_at": None,
+    })
+
+    return {"success": True, "status": "reopened"}
+
