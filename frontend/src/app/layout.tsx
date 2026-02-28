@@ -4,8 +4,11 @@ import { Providers } from "@/components/providers";
 import { AppLayoutWrapper } from "@/components/layout/AppLayoutWrapper";
 
 export const metadata = {
-    title: "CitizenLink",
-    description: "CitizenLink Platform",
+    title: "Citizen Portal",
+    description: "Citizen Portal — Smart Government Complaint Resolution Platform",
+    icons: {
+        icon: "/favicon.png",
+    },
 };
 
 export default function RootLayout({
