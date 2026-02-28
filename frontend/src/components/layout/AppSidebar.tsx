@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, FileText, PlusCircle, ListTodo, Users,
+  LayoutDashboard, FileText, PlusCircle, ListTodo, Map,
   Shield, LogOut
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -19,7 +19,7 @@ const citizenItems = [
 const agentItems = [
   { title: "Dashboard", url: "/agent", icon: LayoutDashboard },
   { title: "Ticket Queue", url: "/agent/queue", icon: ListTodo },
-  { title: "Team", url: "/agent/team", icon: Users },
+  { title: "Live Map", url: "/agent/map", icon: Map },
 ];
 
 export function AppSidebar() {

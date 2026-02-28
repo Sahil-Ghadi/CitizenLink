@@ -14,3 +14,5 @@ langchain==1.2.10
 langgraph==1.0.9
 langchain-core==1.2.16
 langchain-google-genai==4.2.1
+pymupdf>=1.24.0
+numpy>=1.26.0

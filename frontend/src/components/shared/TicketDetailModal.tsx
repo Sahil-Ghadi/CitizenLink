@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     X, MapPin, Clock, User2, Phone, Building2, Star,
     AlertTriangle, CheckCircle2, Loader2, ImageIcon,
-    ChevronRight, Hash, Calendar, Layers, Sparkles
+    ChevronRight, Hash, Calendar, Layers, Sparkles, MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -33,6 +33,7 @@ interface Ticket {
     start_date?: string;
     additional_info?: string;
     rating?: number;
+    messages?: { id: string; from: string; sender_name: string; text: string; sent_at: string }[];
 }
 
 interface Props {
@@ -78,7 +79,12 @@ export default function TicketDetailModal({ ticket, onClose }: Props) {
 
     if (!ticket) return null;
 
-    const statusIdx = STATUS_ORDER[ticket.status] ?? 0;
+    // If in-progress AND agent is assigned → advance to step 2 (Agent Assigned),
+    // otherwise in-progress stays at step 1 (Under Review)
+    const statusIdx =
+        ticket.status === "in-progress" && ticket.agent_name
+            ? 2
+            : (STATUS_ORDER[ticket.status] ?? 0);
     const statusMeta = STATUS_META[ticket.status] ?? STATUS_META["submitted"];
     const sevClass = SEV_COLOR[ticket.severity] ?? SEV_COLOR["medium"];
 
@@ -163,10 +169,10 @@ export default function TicketDetailModal({ ticket, onClose }: Props) {
                                             return (
                                                 <div key={i} className="flex items-start gap-3 relative">
                                                     <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 transition-all ${done
-                                                            ? active
-                                                                ? "bg-accent ring-2 ring-accent/30"
-                                                                : "bg-status-resolved"
-                                                            : "bg-secondary"
+                                                        ? active
+                                                            ? "bg-accent ring-2 ring-accent/30"
+                                                            : "bg-status-resolved"
+                                                        : "bg-secondary"
                                                         }`}>
                                                         <Icon className={`w-3.5 h-3.5 ${done ? "text-white" : "text-muted-foreground"} ${active && step.icon === Loader2 ? "animate-spin" : ""}`} />
                                                     </div>
@@ -200,7 +206,7 @@ export default function TicketDetailModal({ ticket, onClose }: Props) {
                                             animate={{ width: `${ticket.priority_score}%` }}
                                             transition={{ duration: 0.8, ease: "easeOut" }}
                                             className={`h-full rounded-full ${ticket.priority_score >= 80 ? "bg-red-400" :
-                                                    ticket.priority_score >= 60 ? "bg-amber-400" : "bg-emerald-400"
+                                                ticket.priority_score >= 60 ? "bg-amber-400" : "bg-emerald-400"
                                                 }`}
                                         />
                                     </div>
@@ -247,7 +253,28 @@ export default function TicketDetailModal({ ticket, onClose }: Props) {
                                 </div>
                             )}
 
-                            {/* Details grid */}
+                            {/* Agent Updates / Messages */}
+                            {ticket.messages && ticket.messages.length > 0 && (
+                                <div className="glass-card p-4">
+                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                        <MessageSquare className="w-3.5 h-3.5" /> Updates from Agent
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {ticket.messages.map((msg) => (
+                                            <div key={msg.id} className="bg-secondary/60 rounded-xl p-3">
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <span className="text-[11px] font-semibold text-foreground">{msg.sender_name}</span>
+                                                    <span className="text-[10px] text-muted-foreground">
+                                                        {new Date(msg.sent_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground leading-relaxed">{msg.text}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="glass-card p-4 space-y-4">
                                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Issue Details</h3>
 

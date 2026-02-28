@@ -6,9 +6,10 @@ interface LeafletMapProps {
     lat: number;
     lng: number;
     onLocationChange: (lat: number, lng: number, address: string) => void;
+    readonly?: boolean;
 }
 
-export default function LeafletMap({ lat, lng, onLocationChange }: LeafletMapProps) {
+export default function LeafletMap({ lat, lng, onLocationChange, readonly = false }: LeafletMapProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markerRef = useRef<any>(null);
@@ -48,21 +49,23 @@ export default function LeafletMap({ lat, lng, onLocationChange }: LeafletMapPro
                     maxZoom: 19,
                 }).addTo(map);
 
-                const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
-                marker.bindPopup("📍 Drag or click the map to set location").openPopup();
+                const marker = L.marker([lat, lng], { draggable: !readonly }).addTo(map);
+                marker.bindPopup(readonly ? "📍 Issue location" : "📍 Drag or click the map to set location").openPopup();
                 markerRef.current = marker;
 
-                marker.on("dragend", async () => {
-                    const pos = marker.getLatLng();
-                    const address = await reverseGeocode(pos.lat, pos.lng);
-                    onLocationChange(pos.lat, pos.lng, address);
-                });
+                if (!readonly) {
+                    marker.on("dragend", async () => {
+                        const pos = marker.getLatLng();
+                        const address = await reverseGeocode(pos.lat, pos.lng);
+                        onLocationChange(pos.lat, pos.lng, address);
+                    });
 
-                map.on("click", async (e: any) => {
-                    marker.setLatLng(e.latlng);
-                    const address = await reverseGeocode(e.latlng.lat, e.latlng.lng);
-                    onLocationChange(e.latlng.lat, e.latlng.lng, address);
-                });
+                    map.on("click", async (e: any) => {
+                        marker.setLatLng(e.latlng);
+                        const address = await reverseGeocode(e.latlng.lat, e.latlng.lng);
+                        onLocationChange(e.latlng.lat, e.latlng.lng, address);
+                    });
+                }
             }
         });
 

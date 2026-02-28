@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin, ChevronRight, ChevronLeft, Check, Camera,
-  AlertTriangle, Users, Sparkles, Clock, Loader2, CheckCircle2, X, Plus
+  AlertTriangle, Sparkles, Clock, Loader2, CheckCircle2, X, Plus, Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,12 +59,23 @@ export default function ReportIssuePage() {
   const [uploadingExtra, setUploadingExtra] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
+  const [skipped, setSkipped] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [ticketId, setTicketId] = useState("");
   const [error, setError] = useState("");
   const [geolocating, setGeolocating] = useState(false);
   const [geoError, setGeoError] = useState("");
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  type Toast = { id: number; msg: string; type: "success" | "error" | "info" };
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastId = useRef(0);
+  const showToast = useCallback((msg: string, type: Toast["type"] = "info") => {
+    const id = ++toastId.current;
+    setToasts((t) => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
+  }, []);
 
   const [form, setForm] = useState<FormState>({
     title: "",
@@ -122,8 +133,9 @@ export default function ReportIssuePage() {
         severity: data.severity,
       }));
       setAnalyzed(true);
+      showToast("AI analysis complete — fields auto-filled ✨", "success");
     } catch {
-      setError("AI analysis failed. Please fill the form manually.");
+      showToast("AI analysis failed. Please fill the form manually.", "error");
     } finally {
       setAnalyzing(false);
     }
@@ -230,8 +242,8 @@ export default function ReportIssuePage() {
       {STEPS.map((s, i) => (
         <div key={s} className="flex items-center gap-2 flex-1">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-300 ${i < step ? "bg-status-resolved text-primary-foreground"
-              : i === step ? "bg-accent text-accent-foreground"
-                : "bg-secondary text-muted-foreground"
+            : i === step ? "bg-accent text-accent-foreground"
+              : "bg-secondary text-muted-foreground"
             }`}>
             {i < step ? <Check className="w-4 h-4" /> : i + 1}
           </div>
@@ -276,6 +288,30 @@ export default function ReportIssuePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
+      {/* ── Toast portal ─────────────────────────────────────────────────── */}
+      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, y: -12, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              transition={{ duration: 0.22 }}
+              className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl text-sm font-medium max-w-xs border ${t.type === "success" ? "bg-emerald-950/90 border-emerald-500/30 text-emerald-300" :
+                t.type === "error" ? "bg-red-950/90 border-red-500/30 text-red-300" :
+                  "bg-card border-border text-foreground"
+                }`}
+            >
+              {t.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> :
+                t.type === "error" ? <AlertTriangle className="w-4 h-4 shrink-0" /> :
+                  <Zap className="w-4 h-4 shrink-0" />}
+              {t.msg}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       <div>
         <h1 className="text-2xl font-display font-bold text-foreground">Report an Issue</h1>
         <p className="text-sm text-muted-foreground mt-1">Help improve your community</p>
@@ -321,13 +357,6 @@ export default function ReportIssuePage() {
               </div>
             ) : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                {analyzed && (
-                  <div className="flex items-center gap-2 p-3 bg-status-resolved/10 rounded-xl border border-status-resolved/20">
-                    <Check className="w-4 h-4 text-status-resolved" />
-                    <span className="text-sm font-medium text-foreground">AI analysis complete — fields auto-filled</span>
-                    <AiBadge />
-                  </div>
-                )}
                 <div className="glass-card p-4 space-y-4">
                   {photoPreview && <img src={photoPreview} alt="Uploaded" className="w-full max-h-48 object-cover rounded-xl" />}
                   <div>
@@ -362,11 +391,52 @@ export default function ReportIssuePage() {
               </motion.div>
             )}
 
-            {!photoFile && (
-              <button onClick={() => { setStep(1); setForm((f) => ({ ...f, title: f.title || "Untitled Issue" })); }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                Skip photo →
+            {/* Skip → shows manual form inline */}
+            {!photoFile && !skipped && (
+              <button
+                onClick={() => setSkipped(true)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Skip photo — fill manually →
               </button>
+            )}
+
+            {/* Manual form shown after skip */}
+            {skipped && !photoFile && (
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-4">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Issue Details</p>
+                  <button onClick={() => setSkipped(false)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Back to photo</button>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Title <span className="text-destructive">*</span></label>
+                  <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="rounded-xl" placeholder="Briefly describe the issue" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Description</label>
+                  <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="rounded-xl min-h-[80px]" placeholder="Provide more context…" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Category</label>
+                    <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      className="w-full h-10 rounded-xl border border-input bg-card px-3 text-sm text-foreground">
+                      <option value="">Select…</option>
+                      {categories.map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Severity</label>
+                    <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}
+                      className="w-full h-10 rounded-xl border border-input bg-card px-3 text-sm text-foreground">
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="emergency">Emergency</option>
+                    </select>
+                  </div>
+                </div>
+              </motion.div>
             )}
           </motion.div>
         )}
@@ -399,20 +469,12 @@ export default function ReportIssuePage() {
               <p className="text-xs text-muted-foreground text-center">📍 Click on the map or drag the marker to pin the exact location</p>
             </div>
 
-            <div className="glass-card p-4 border-l-4 border-l-accent">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4 text-accent" />
-                <span className="text-sm font-semibold text-foreground">Proximity Alert</span>
-                <AiBadge />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">4 citizens</span> nearby reported similar issues. Join to boost priority?
-              </p>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" className="rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 text-xs">Accept</Button>
-                <Button size="sm" variant="outline" className="rounded-xl text-xs">Skip</Button>
-              </div>
-            </div>
+            <button
+              onClick={() => { setError(""); setStep(2); }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Skip location →
+            </button>
           </motion.div>
         )}
 
@@ -519,14 +581,7 @@ export default function ReportIssuePage() {
               {form.description && <p className="text-sm text-muted-foreground">{form.description}</p>}
             </div>
 
-            <div className="glass-card p-4 flex items-center gap-3">
-              <Clock className="w-5 h-5 text-accent shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Estimated Resolution: 2–3 days</p>
-                <p className="text-xs text-muted-foreground">Based on AI analysis of similar cases</p>
-              </div>
-              <AiBadge />
-            </div>
+
 
             {(form.severity === "high" || form.severity === "emergency") && (
               <div className="glass-card p-4 border-l-4 border-l-red-500 flex items-start gap-3">
@@ -557,7 +612,8 @@ export default function ReportIssuePage() {
           <Button onClick={() => {
             if (step === 0 && !form.title) { setError("Please add a title before continuing."); return; }
             setError(""); setStep(step + 1);
-          }} className="rounded-xl gap-1 bg-primary text-primary-foreground">
+          }} className="rounded-xl gap-1 bg-primary text-primary-foreground"
+            disabled={step === 0 && skipped && !form.title.trim()}>
             Next <ChevronRight className="w-4 h-4" />
           </Button>
         )}

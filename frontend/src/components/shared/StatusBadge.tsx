@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils";
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; className: string }> = {
   submitted: { label: "Submitted", className: "status-submitted" },
   "in-progress": { label: "In Progress", className: "status-progress" },
   resolved: { label: "Resolved", className: "status-resolved" },
+  "auto-resolved": { label: "Resolved", className: "status-resolved" },
   emergency: { label: "Emergency", className: "status-emergency" },
   rejected: { label: "Rejected", className: "status-submitted" },
 };

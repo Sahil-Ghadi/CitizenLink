@@ -9,8 +9,8 @@ import {
 import { StatusBadge, SeverityBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from "@/context/AppContext";
-import { getIdToken } from "@/lib/auth";
-import TicketDetailModal from "@/components/shared/TicketDetailModal";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
@@ -51,37 +51,47 @@ export default function MyTicketsPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
 
-  const fetchTickets = async (silent = false) => {
+  useEffect(() => {
     if (!user) return;
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
+    setLoading(true);
     setError("");
-    try {
-      const idToken = await getIdToken();
-      const res = await fetch(`${BACKEND_URL}/tickets/my`, {
-        headers: { Authorization: `Bearer ${idToken}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch tickets");
-      const data = await res.json();
-      setTickets(data);
-    } catch (e: any) {
-      setError("Could not load tickets. Is the backend running?");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
 
-  useEffect(() => { fetchTickets(); }, [user]);
+    const q = query(
+      collection(db, "tickets"),
+      where("citizen_uid", "==", user.uid)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        // Because Firestore doesn't allow ordering on a different field than the inequality filter natively without an index,
+        // we fetch them all for this user and sort client-side by created_at.
+        const docs = snapshot.docs.map((doc) => ({
+          ...doc.data(),
+        })) as any[];
+
+        docs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setTickets(docs);
+        setLoading(false);
+      },
+      (err) => {
+        setError("Could not load tickets. " + err.message);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
 
   const filtered = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
 
+  const isResolved = (t: any) => t.status === "resolved" || t.status === "auto-resolved";
+
   const stats = {
     total: tickets.length,
-    active: tickets.filter((t) => t.status !== "resolved").length,
-    resolved: tickets.filter((t) => t.status === "resolved").length,
+    active: tickets.filter((t) => !isResolved(t)).length,
+    resolved: tickets.filter(isResolved).length,
   };
 
   return (
@@ -95,16 +105,6 @@ export default function MyTicketsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-1.5 h-9"
-            onClick={() => fetchTickets(true)}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
           <Button
             size="sm"
             className="rounded-xl gap-1.5 h-9 bg-primary text-primary-foreground"
@@ -167,7 +167,7 @@ export default function MyTicketsPage() {
         <div className="glass-card p-6 flex flex-col items-center gap-3 text-center">
           <AlertTriangle className="w-8 h-8 text-destructive" />
           <p className="text-sm text-foreground font-medium">{error}</p>
-          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => fetchTickets()}>Try Again</Button>
+          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => window.location.reload()}>Try Again</Button>
         </div>
       )}
 
@@ -210,8 +210,11 @@ export default function MyTicketsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ delay: i * 0.04 }}
-                  onClick={() => setSelectedTicket(ticket)}
-                  className="glass-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group"
+                  onClick={() => router.push(`/tickets/${ticket.id}`)}
+                  className={`glass-card p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group ${(ticket.status === "resolved" || ticket.status === "auto-resolved")
+                    ? "border-l-4 border-l-emerald-500 bg-emerald-500/5"
+                    : ""
+                    }`}
                 >
                   <div className="flex items-start gap-4">
                     {/* Photo thumbnail */}
@@ -297,9 +300,6 @@ export default function MyTicketsPage() {
           </div>
         </AnimatePresence>
       )}
-
-      {/* Ticket Detail Modal */}
-      <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
     </div>
   );
 }

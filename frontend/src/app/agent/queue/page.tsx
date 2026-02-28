@@ -14,7 +14,9 @@ const TicketQueue = () => {
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"priority" | "date">("priority");
 
-  let filtered: ApiTicket[] = tickets.filter((t) => t.status !== "resolved");
+  let filtered: ApiTicket[] = tickets.filter(
+    (t) => t.status !== "resolved" && t.status !== "auto-resolved" && (t as any).triage_routed_to !== "llm"
+  );
   if (severityFilter !== "all") filtered = filtered.filter((t) => t.severity === severityFilter);
   if (search)
     filtered = filtered.filter(

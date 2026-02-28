@@ -1,6 +1,7 @@
-"use client";
 import { useState, useEffect, useCallback } from "react";
 import { getIdToken } from "@/lib/auth";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -13,7 +14,7 @@ export interface ApiTicket {
     category: string;
     department: string;
     severity: "low" | "medium" | "high" | "emergency";
-    status: "submitted" | "in-progress" | "resolved" | "rejected";
+    status: "submitted" | "in-progress" | "resolved" | "auto-resolved" | "rejected";
     location_address: string;
     latitude?: number;
     longitude?: number;
@@ -24,8 +25,16 @@ export interface ApiTicket {
     photo_urls?: string[];
     created_at: string;
     updated_at: string;
+    start_date?: string;
+    ongoing?: boolean;
+    additional_info?: string;
     priority_score: number;
     ai_summary?: string;
+    copilot_recommended_action?: string;
+    copilot_effort_estimate?: string;
+    copilot_risk_level?: string;
+    copilot_draft_reply?: string;
+    copilot_run_at?: string;
     agent_uid?: string | null;
     agent_name?: string | null;
     messages?: unknown[];
@@ -91,26 +100,20 @@ export function useTicketById(ticketId: string | null): {
             setLoading(false);
             return;
         }
-        let cancelled = false;
-        (async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const token = await getIdToken();
-                if (!token) throw new Error("Not authenticated");
-                const res = await fetch(`${BASE_URL}/tickets/${ticketId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!res.ok) throw new Error(`Ticket not found (${res.status})`);
-                const data: ApiTicket = await res.json();
-                if (!cancelled) setTicket(data);
-            } catch (err: unknown) {
-                if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load ticket");
-            } finally {
-                if (!cancelled) setLoading(false);
+        const ticketRef = doc(db, "tickets", ticketId);
+        const unsubscribe = onSnapshot(ticketRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setTicket({ id: docSnap.id, ...docSnap.data() } as ApiTicket);
+            } else {
+                setError("Ticket not found");
             }
-        })();
-        return () => { cancelled = true; };
+            setLoading(false);
+        }, (err) => {
+            setError(err.message);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [ticketId]);
 
     return { ticket, loading, error };

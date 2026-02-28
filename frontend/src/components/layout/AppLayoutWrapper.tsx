@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AppLayout } from "./AppLayout";
 import { useAppContext } from "@/context/AppContext";
+import { useTicketNotifications } from "@/hooks/use-ticket-notifications";
 
 // Pages that don't need the sidebar/app shell
 const PUBLIC_PATHS = ["/", "/login", "/onboarding"];
@@ -12,6 +13,9 @@ export function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const { isLoggedIn, loading } = useAppContext();
+
+    // Real-time ticket status change → toast notifications
+    useTicketNotifications();
 
     const isPublic = PUBLIC_PATHS.includes(pathname);
 
