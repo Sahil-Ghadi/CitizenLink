@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getIdToken } from "@/lib/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, collection, query, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -58,30 +58,43 @@ export function useAgentTickets(): UseTicketsReturn {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchTickets = useCallback(async () => {
+    useEffect(() => {
         setLoading(true);
-        setError(null);
-        try {
-            const token = await getIdToken();
-            if (!token) throw new Error("Not authenticated");
-            const res = await fetch(`${BASE_URL}/tickets/all`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error(`Server error: ${res.status}`);
-            const data: ApiTicket[] = await res.json();
-            setTickets(data);
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Failed to load tickets");
-        } finally {
-            setLoading(false);
-        }
+        const q = query(collection(db, "tickets"));
+        const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                const docs: ApiTicket[] = [];
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data() as Record<string, any>;
+                    // Skip tickets resolved by LLM — those don't need human attention (same as backend /tickets/all)
+                    if (data.triage_routed_to === "llm" || data.status === "auto-resolved") {
+                        return;
+                    }
+                    docs.push({ id: docSnap.id, ...data } as ApiTicket);
+                });
+
+                docs.sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0));
+                setTickets(docs);
+                setLoading(false);
+                setError(null);
+            },
+            (err) => {
+                setError(err.message);
+                setLoading(false);
+            }
+        );
+
+        return () => unsubscribe();
     }, []);
 
-    useEffect(() => {
-        fetchTickets();
-    }, [fetchTickets]);
+    const refresh = useCallback(() => {
+        // onSnapshot is real-time, but UI refresh button can just show a quick loading state
+        setLoading(true);
+        setTimeout(() => setLoading(false), 400);
+    }, []);
 
-    return { tickets, loading, error, refresh: fetchTickets };
+    return { tickets, loading, error, refresh };
 }
 
 /**
